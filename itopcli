@@ -1,0 +1,245 @@
+#!/usr/bin/env python3
+"""Main Program """
+import configparser
+import sys
+import json
+import requests
+import click
+
+
+class ClientConfiguration(object):
+    """Client Configuration Class to manage client configuration file"""
+    def __init__(self, location):
+        self.location = location
+        self.url = ''
+        self.apisuffix = ''
+        self.apiversion = ''
+        self.organization = ''
+        self.username = ''
+        self.password = ''
+        self.timeout = 0
+
+    def set(self, argobj):
+        """sets parms the Configuration File"""
+        try:
+            parser = configparser.ConfigParser()
+            parser.add_section('main')
+
+            for item, value in argobj.items():
+                if item == 'location':
+                    self.location = value
+                else:
+                    parser.set('main', item, str(value))
+
+            with open(argobj['location'], 'w') as configfile:
+                parser.write(configfile)
+        except (IOError, configparser.Error) as message:
+            json_msg = json.loads('{"source": "SetClientConfiguration","message": "'
+                                  +str(message)+'"}')
+            msg = json.dumps(json_msg, indent=2)
+            print(msg)
+            sys.exit(1)
+
+    def get(self):
+        """Check Permissions and read client configuration file settings"""
+        clicheck = configparser.ConfigParser()
+        try:
+            # Try to open the file to
+            # check permissions and path
+            open(self.location)
+            clicheck.read(self.location)
+
+            self.url = clicheck.get('main', 'url')
+            self.apisuffix = clicheck.get('main', 'apisuffix')
+            self.apiversion = clicheck.get('main', 'apiversion')
+            self.organization = clicheck.get('main', 'organization')
+            self.username = clicheck.get('main', 'username')
+            self.password = clicheck.get('main', 'password')
+            self.timeout = clicheck.get('main', 'timeout')
+        except configparser.MissingSectionHeaderError as errmsg:
+            errmsg = json.loads("{'source': 'ReadClientConfiguration'"
+                                + ",'message': 'Section Header [main] is missing'}")
+            msg = json.dumps(errmsg, indent=2)
+            print(msg)
+            sys.exit(1)
+        except configparser.Error as errmsg:
+            errmsg = json.loads("{'source': 'ReadClientConfiguration', 'message': '"
+                                + str(errmsg) + "'}")
+            msg = json.dumps(errmsg, indent=2)
+            print(msg)
+            sys.exit(1)
+        except (OSError, IOError) as osmessage:
+            print('{"source": "IOConfigurationException", "message": "' + str(osmessage) 
+                  + '.  Run itopcli configure --help for more information."}')
+            sys.exit(1)
+
+
+@click.group()
+def cli1():
+    """Query command client"""
+    pass
+
+@cli1.command()
+@click.option('--class',
+              default='Server',
+              required=True,
+              help='iTop Server Class')
+@click.option('--attribute',
+              required=True,
+              help='Attribute code for iTop Class')
+@click.option('--criteria',
+              help='Search criteria for iTop Class Attribute')
+@click.option('--key',
+              help='Key number of Attribute (Must be integer)',
+              default=0,
+              type=int)
+@click.option('--outputfields',
+              default='*',
+              help='Fields to be displayed in JSON (Comma-separated)')
+
+def query(**kwargs):
+    """
+    Query classes (core/get) in iTop.\n
+
+    Notes:\n
+    The --key option takes precedence over --criteria option
+    """
+    # Retrieve the itopcli configuration
+    clicfg = ClientConfiguration(location='.itopcli')
+    clicfg.get()
+
+    # Store the arguments data from the query command into a dict
+    arg = kwargs
+
+    # Contruct the query with JSON to be passed to URL
+    json_data = {
+        'operation': 'core/get',
+        'output_fields': arg['outputfields'],
+        'class': arg['class']
+        }
+    if (arg['key'] > 0) and (isinstance(arg['key'], int)):
+        json_data['key'] = arg['key']
+    else:
+        json_data['key'] = ("SELECT "
+                            + arg['class']
+                            + " WHERE "
+                            + arg['attribute']
+                            + " = '"
+                            + arg['criteria'] + "'")
+
+    encoded_data = json.dumps(json_data)
+
+    # Query the URL
+    try:
+        output = requests.post(clicfg.url + clicfg.apisuffix +'?version=' + clicfg.apiversion,
+                               timeout=int(clicfg.timeout),
+                               verify=False,
+                               data={'auth_user': '' + clicfg.username +'',
+                                     'auth_pwd': '' + clicfg.password + '',
+                                     'json_data': encoded_data
+                                    })
+        output.raise_for_status()
+    except (requests.exceptions.HTTPError,
+            requests.exceptions.ConnectionError,
+            requests.exceptions.ConnectTimeout,
+            requests.exceptions.ReadTimeout,
+            requests.exceptions.Timeout,
+            ValueError) as httperr:
+        errmsg = json.loads('{"source": "HTTPException", "message": "' +
+                            str(httperr) + '"}')
+        errmsg = json.dumps(errmsg, indent=2)
+        print(errmsg)
+        sys.exit(1)
+
+    # Load the response from the server to JSON
+    # Present it back to the client
+    try:
+        resultobj = json.loads(output.text)
+        result = json.dumps(resultobj, indent=2)
+        if resultobj['code'] == 0:
+            print(result)
+        else:
+            json_msg = json.loads('{"source": "QueryResults", "message": "' +
+                                  resultobj["message"] + '"}')
+            msg = json.dumps(json_msg, indent=2)
+            print(msg)
+            sys.exit(1)
+    except (requests.RequestException, json.JSONDecodeError) as message:
+        errmsg = json.loads('{"source": "QueryResultsException", "message": "' +
+                            str(message) + '"}')
+        errmsg = json.dumps(errmsg, indent=2)
+        print(errmsg)
+        sys.exit(1)
+
+@click.group()
+def cli2():
+    """Configuration command client"""
+    pass
+
+@cli2.command()
+@click.option('--location',
+              default='.itopcli',
+              required=True,
+              help='Location of iTopcli configuration file')
+@click.option('--url',
+              required=True,
+              help='Root Domain name of iTop Server')
+@click.option('--apisuffix',
+              required=True,
+              help='Web Context location of rest.php')
+@click.option('--apiversion',
+              required=True,
+              type=click.Choice(['1.2', '1.3']),
+              help='Supported iTop REST Version')
+@click.option('--organization',
+              required=False,
+              default='',
+              help='Default iTop Organization (For future use)')
+@click.option('--timeout',
+              required=True,
+              default=10,
+              type=int,
+              help='HTTP Timeout')
+@click.option('--username',
+              required=True,
+              help='User Name for REST User')
+@click.option('--password',
+              required=True,
+              help='Password for REST User')
+
+def configure(**kwargs):
+    """
+    Configure itopcli options.  This command takes arguments.
+    Use the 'itopcli --help' command to get a list of arguments.\n
+
+    Notes:\n
+    The user configured to use this client tool must be part of the
+    Profile called 'REST Services User' within iTop.
+    """
+    cfgargs = kwargs
+    cfgpass = {}
+    try:
+        clicfg = ClientConfiguration(location='.itopcli')
+        for key, item in cfgargs.items():
+            if item is None:
+                pass
+            else:
+                cfgpass[key] = item
+
+        clicfg.set(cfgpass)
+    except configparser.Error as message:
+        errmsg = json.loads('{"source": "ConfigureException", "message": "' +
+                            str(message) + '"}')
+        errmsg = json.dumps(errmsg, indent=2)
+        print(errmsg)
+        sys.exit(1)
+
+
+def main():
+    """Main Function - Entry Point"""
+    cli = click.CommandCollection(sources=[cli1, cli2])
+    cli(prog_name='itopcli')
+
+
+if __name__ == '__main__':
+    main()

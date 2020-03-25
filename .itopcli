@@ -1,0 +1,9 @@
+[main]
+url = http://example.com
+username = admin
+password = admin
+apisuffix = /webservices/rest.php
+apiversion = 1.3
+timeout = 10
+organization = My Company/Department
+
