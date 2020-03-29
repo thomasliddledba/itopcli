@@ -114,6 +114,9 @@ def query(**kwargs):
         }
     if (arg['key'] > 0) and (isinstance(arg['key'], int)):
         json_data['key'] = arg['key']
+    elif (arg['criteria'] == '*'):
+        json_data['key'] = ("SELECT "
+                            + arg['class'])
     else:
         json_data['key'] = ("SELECT "
                             + arg['class']
