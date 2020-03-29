@@ -152,6 +152,33 @@ The `--key` option takes precedence over `--criteria` option if specified in the
 
 ```
 
+```console
+
+./itopcli query --class='WebServer' --attribute='name' --criteria='*' --outputfields='*'
+{
+  "objects": {
+    "WebServer::2": {
+      "code": 0,
+      "message": "",
+      "class": "WebServer",
+      "key": "2",
+      "fields": {
+        "name": "lucy",
+        "description": "",
+        "org_id": "1",
+        "organization_name": "My Company/Department",
+        "business_criticity": "low",
+        "move2production": ""
+        ...
+      }
+    }
+  },
+  "code": 0,
+  "message": "Found: 1"
+}
+
+```
+
 ### Things to Note
 
 1. I originally wrote this for Python3 but I understood, even in my own setup that users still
