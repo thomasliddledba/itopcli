@@ -56,20 +56,15 @@ class ClientConfiguration(object):
             self.username = clicheck.get('main', 'username')
             self.password = clicheck.get('main', 'password')
             self.timeout = clicheck.get('main', 'timeout')
-        except configparser.MissingSectionHeaderError as errmsg:
-            errmsg = json.loads("{'source': 'ReadClientConfiguration'"
-                                + ",'message': 'Section Header [main] is missing'}")
-            msg = json.dumps(errmsg, indent=2)
-            print(msg)
+        except (configparser.MissingSectionHeaderError) as errmsg:
+            print('{"source": "ReadClientConfiguration"'
+                  + ",'message': 'Section Header [main] is missing'}")
             sys.exit(1)
-        except configparser.Error as errmsg:
-            errmsg = json.loads("{'source': 'ReadClientConfiguration', 'message': '"
-                                + str(errmsg) + "'}")
-            msg = json.dumps(errmsg, indent=2)
-            print(msg)
+        except (configparser.Error) as errmsg:
+            print('{"source": "ReadClientConfiguration", "message": "'+ str(errmsg) + '"}')
             sys.exit(1)
         except (OSError, IOError) as osmessage:
-            print('{"source": "IOConfigurationException", "message": "' + str(osmessage) 
+            print('{"source": "IOConfigurationException", "message": "' + str(osmessage)
                   + '.  Run itopcli configure --help for more information."}')
             sys.exit(1)
 
