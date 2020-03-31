@@ -83,6 +83,7 @@ def cli1():
               required=True,
               help='Attribute code for iTop Class')
 @click.option('--criteria',
+              default='*',
               help='Search criteria for iTop Class Attribute')
 @click.option('--key',
               help='Key number of Attribute (Must be integer)',
