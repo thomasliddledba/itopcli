@@ -38,7 +38,31 @@ pip3 install -r requirements.txt
 chmod +x ./itopcli
 ```
 
-### Configure
+## Configure
+
+### Usage
+```console
+Usage: itopcli configure [OPTIONS]
+
+  Configure itopcli options.  This command takes arguments. Use the 'itopcli
+  --help' command to get a list of arguments.
+
+  Notes:
+
+  The user configured to use this client tool must be part of the Profile
+  called 'REST Services User' within iTop.
+
+Options:
+  --location TEXT         Location of iTopcli configuration file  [required]
+  --url TEXT              Root Domain name of iTop Server  [required]
+  --apisuffix TEXT        Web Context location of rest.php  [required]
+  --apiversion [1.2|1.3]  Supported iTop REST Version  [required]
+  --organization TEXT     Default iTop Organization (For future use)
+  --timeout INTEGER       HTTP Timeout  [required]
+  --username TEXT         User Name for REST User  [required]
+  --password TEXT         Password for REST User  [required]
+  --help                  Show this message and exit.
+  ```
 
 ### Create config file
 
@@ -63,6 +87,26 @@ This client produces JSON for every query (even errors). You can format the JSON
 The class, attribute, and criteria are based on iTop's object schema. The object schema is found in the software under `Administration>Data Model`. I tried to mimic the [iTop Data Model](https://www.itophub.io/wiki/page?id=latest%3Adatamodel%3Astart) in this tool closely.
 
 If specified in the same command, the --key option precedes the --criteria option.
+
+## Usage
+
+```console
+Usage: itopcli query [OPTIONS]
+
+  Query classes (core/get) in iTop.
+
+  Notes:
+
+  The --key option takes precedence over --criteria option
+
+Options:
+  --class TEXT         iTop Server Class  [required]
+  --attribute TEXT     Attribute code for iTop Class  [required]
+  --criteria TEXT      Search criteria for iTop Class Attribute
+  --key INTEGER        Key number of Attribute (Must be integer)
+  --outputfields TEXT  Fields to be displayed in JSON (Comma-separated)
+  --help               Show this message and exit.
+```
 
 #### Get All Records
 
