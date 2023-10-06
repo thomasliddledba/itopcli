@@ -1,9 +1,9 @@
 [main]
-url = http://example.com
-username = admin
-password = admin
+url = http://localhost:8000
 apisuffix = /webservices/rest.php
 apiversion = 1.3
+organization = Demo
 timeout = 10
-organization = My Company/Department
+username = admin
+password = MyAdminPassword1!
 

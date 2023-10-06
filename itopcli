@@ -7,7 +7,7 @@ import requests
 import click
 
 
-class ClientConfiguration(object):
+class ClientConfiguration:
     """Client Configuration Class to manage client configuration file"""
 
     def __init__(self, location):
@@ -32,7 +32,7 @@ class ClientConfiguration(object):
                 else:
                     parser.set("main", item, str(value))
 
-            with open(argobj["location"], "w") as configfile:
+            with open(argobj["location"], "w", encoding="UTF-8") as configfile:
                 parser.write(configfile)
         except (IOError, configparser.Error) as message:
             json_msg = json.loads(
@@ -48,8 +48,8 @@ class ClientConfiguration(object):
         try:
             # Try to open the file to
             # check permissions and path
-            open(self.location)
-            clicheck.read(self.location)
+            with open(self.location, "r", encoding="UTF-8"):
+                clicheck.read(self.location)
 
             self.url = clicheck.get("main", "url")
             self.apisuffix = clicheck.get("main", "apisuffix")
@@ -58,13 +58,13 @@ class ClientConfiguration(object):
             self.username = clicheck.get("main", "username")
             self.password = clicheck.get("main", "password")
             self.timeout = clicheck.get("main", "timeout")
-        except (configparser.MissingSectionHeaderError) as errmsg:
+        except configparser.MissingSectionHeaderError:
             print(
                 '{"source": "ReadClientConfiguration"'
                 + ",'message': 'Section Header [main] is missing'}"
             )
             sys.exit(1)
-        except (configparser.Error) as errmsg:
+        except configparser.Error as errmsg:
             print(
                 '{"source": "ReadClientConfiguration", "message": "'
                 + str(errmsg)
@@ -83,7 +83,7 @@ class ClientConfiguration(object):
 @click.group()
 def cli1():
     """Query command client"""
-    pass
+    return
 
 
 @cli1.command()
@@ -191,7 +191,7 @@ def query(**kwargs):
 @click.group()
 def cli2():
     """Configuration command client"""
-    pass
+    return
 
 
 @cli2.command()
