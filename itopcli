@@ -5,7 +5,6 @@ from __future__ import annotations
 
 import configparser
 import json
-import sys
 from pathlib import Path
 from typing import Any
 
@@ -128,35 +127,6 @@ def coerce_value(value: str) -> Any:
 
     return raw
 
-def coerce_value(value: str):
-    raw = value.strip()
-    lowered = raw.lower()
-
-    if lowered == "true":
-        return True
-    if lowered == "false":
-        return False
-    if lowered in {"null", "none"}:
-        return None
-
-    if raw.startswith("{") or raw.startswith("["):
-        try:
-            return json.loads(raw)
-        except json.JSONDecodeError:
-            pass
-
-    try:
-        return int(raw)
-    except ValueError:
-        pass
-
-    try:
-        return float(raw)
-    except ValueError:
-        pass
-
-    return raw
-
 
 def parse_set_values(pairs: tuple[str, ...]) -> dict[str, Any]:
     values: dict[str, Any] = {}
@@ -184,7 +154,9 @@ def parse_fields_json(raw_json: str | None) -> dict[str, Any]:
     return data
 
 
-def merge_update_fields(set_pairs: tuple[str, ...], fields_json: str | None) -> dict[str, Any]:
+def merge_update_fields(
+    set_pairs: tuple[str, ...], fields_json: str | None
+) -> dict[str, Any]:
     fields = parse_fields_json(fields_json)
     fields.update(parse_set_values(set_pairs))
     return fields
@@ -232,12 +204,28 @@ def cli() -> None:
 
 @cli.command()
 @click.option("--config", default=DEFAULT_CONFIG, show_default=True)
-@click.option("--class", "class_name", default="Server", required=True, help="iTOP class")
+@click.option(
+    "--class", "class_name", default="Server", required=True, help="iTOP class"
+)
 @click.option("--attribute", required=True, help="Attribute code for iTOP class")
 @click.option("--criteria", default="*", show_default=True, help="Search criteria")
-@click.option("--key", default=0, type=int, help="Object key (takes precedence over criteria)")
-@click.option("--outputfields", default="*", show_default=True, help="Comma-separated output fields")
-def query(config: str, class_name: str, attribute: str, criteria: str, key: int, outputfields: str) -> None:
+@click.option(
+    "--key", default=0, type=int, help="Object key (takes precedence over criteria)"
+)
+@click.option(
+    "--outputfields",
+    default="*",
+    show_default=True,
+    help="Comma-separated output fields",
+)
+def query(
+    config: str,
+    class_name: str,
+    attribute: str,
+    criteria: str,
+    key: int,
+    outputfields: str,
+) -> None:
     """Query iTOP objects using core/get."""
     cfg = load_config(config)
     payload = {
@@ -257,11 +245,34 @@ def query(config: str, class_name: str, attribute: str, criteria: str, key: int,
 @click.option("--config", default=DEFAULT_CONFIG, show_default=True)
 @click.option("--class", "class_name", required=True, help="iTOP class")
 @click.option("--key", required=True, type=int, help="Object key to update")
-@click.option("--comment", default="Updated by itopcli", show_default=True, help="Audit comment")
-@click.option("--outputfields", default="*", show_default=True, help="Fields to return after update")
-@click.option("--set", "set_values", multiple=True, help="Field update in field=value form. Repeat as needed.")
-@click.option("--fields-json", help="JSON object of fields to update, e.g. '{\"status\": \"production\"}'")
-def update(config: str, class_name: str, key: int, comment: str, outputfields: str, set_values: tuple[str, ...], fields_json: str | None) -> None:
+@click.option(
+    "--comment", default="Updated by itopcli", show_default=True, help="Audit comment"
+)
+@click.option(
+    "--outputfields",
+    default="*",
+    show_default=True,
+    help="Fields to return after update",
+)
+@click.option(
+    "--set",
+    "set_values",
+    multiple=True,
+    help="Field update in field=value form. Repeat as needed.",
+)
+@click.option(
+    "--fields-json",
+    help='JSON object of fields to update, e.g. \'{"status": "production"}\'',
+)
+def update(
+    config: str,
+    class_name: str,
+    key: int,
+    comment: str,
+    outputfields: str,
+    set_values: tuple[str, ...],
+    fields_json: str | None,
+) -> None:
     """Update an iTOP object using core/update."""
     cfg = load_config(config)
 
@@ -291,15 +302,80 @@ def update(config: str, class_name: str, key: int, comment: str, outputfields: s
 
 
 @cli.command()
-@click.option("--location", default=DEFAULT_CONFIG, show_default=True, help="Config file location")
+@click.option("--config", default=DEFAULT_CONFIG, show_default=True)
+@click.option("--class", "class_name", required=True, help="iTOP class")
+@click.option(
+    "--comment", default="Created by itopcli", show_default=True, help="Audit comment"
+)
+@click.option(
+    "--outputfields",
+    default="*",
+    show_default=True,
+    help="Fields to return after create",
+)
+@click.option(
+    "--set",
+    "set_values",
+    multiple=True,
+    help="Field value in field=value form. Repeat as needed.",
+)
+@click.option(
+    "--fields-json", help='JSON object of fields to set, e.g. \'{"name": "srv01"}\''
+)
+def create(
+    config: str,
+    class_name: str,
+    comment: str,
+    outputfields: str,
+    set_values: tuple[str, ...],
+    fields_json: str | None,
+) -> None:
+    """Create an iTOP object using core/create."""
+    cfg = load_config(config)
+
+    try:
+        fields = merge_update_fields(set_values, fields_json)
+    except ClientError as exc:
+        fail("CreateArguments", str(exc))
+
+    if not fields:
+        fail("CreateArguments", "No fields supplied. Use --set or --fields-json.")
+
+    payload = {
+        "operation": "core/create",
+        "class": class_name,
+        "fields": fields,
+        "comment": comment,
+        "output_fields": outputfields,
+    }
+
+    try:
+        result = call_itop(cfg, payload)
+    except ClientError as exc:
+        fail("CreateResults", str(exc))
+
+    print_json(result)
+
+
+@cli.command()
+@click.option(
+    "--location", default=DEFAULT_CONFIG, show_default=True, help="Config file location"
+)
 @click.option("--url", required=True, help="Root URL of iTOP server")
 @click.option("--apisuffix", required=True, help="Web context path to rest.php")
 @click.option("--apiversion", required=True, type=click.Choice(SUPPORTED_API_VERSIONS))
-@click.option("--organization", default="", show_default=True, help="Default organization")
+@click.option(
+    "--organization", default="", show_default=True, help="Default organization"
+)
 @click.option("--timeout", default=10, type=int, show_default=True, help="HTTP timeout")
 @click.option("--username", required=True, help="REST username")
 @click.option("--password", required=True, help="REST password")
-@click.option("--verify-ssl/--no-verify-ssl", default=True, show_default=True, help="Verify TLS certificates")
+@click.option(
+    "--verify-ssl/--no-verify-ssl",
+    default=True,
+    show_default=True,
+    help="Verify TLS certificates",
+)
 def configure(**kwargs: Any) -> None:
     """Write CLI configuration."""
     cfg = ClientConfiguration(location=kwargs["location"])

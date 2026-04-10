@@ -55,7 +55,7 @@ chmod +x ./itopcli
 ```
 
 ## Usage
-The itopcli has two commands `query` and `update`.
+The itopcli has three commands `query`, `update`, `create`.
 
 ### Query Command
 
@@ -99,6 +99,22 @@ Options:
   --set TEXT           Field update in field=value form. Repeat as needed.
   --fields-json TEXT   JSON object of fields to update, e.g. '{"status":
                        "production"}'
+  --help               Show this message and exit.
+```
+
+### Create Command
+```
+Usage: itopcli create [OPTIONS]
+
+  Create an iTOP object using core/create.
+
+Options:
+  --config TEXT        [default: .itopcli]
+  --class TEXT         iTOP class  [required]
+  --comment TEXT       Audit comment  [default: Created by itopcli]
+  --outputfields TEXT  Fields to return after create  [default: *]
+  --set TEXT           Field value in field=value form. Repeat as needed.
+  --fields-json TEXT   JSON object of fields to set, e.g. '{"name": "srv01"}'
   --help               Show this message and exit.
 ```
 
@@ -214,6 +230,26 @@ Options:
 ......
 }
 
+```
+
+#### Create Records (with `--set`)
+`org_id` is a required field.
+```console
+./itopcli create \
+  --class Server \
+  --set name=test-server-01 \
+  --set cpu=8 \
+  --set ram=32 \
+  --set org_id=1
+  --comment "Created from CLI"
+```
+
+#### Create Records (with json data)
+```console
+./itopcli create \
+  --class Server \
+  --fields-json '{"name":"test-server-02","cpu":8,"ram":32, "org_id": 1}' \
+  --comment "Created from CLI"
 ```
 
 ## How to Contribute
