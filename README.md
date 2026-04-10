@@ -55,7 +55,7 @@ chmod +x ./itopcli
 ```
 
 ## Usage
-The itopcli has three commands `query`, `update`, `create`.
+The itopcli has four commands `query`, `update`, `delete`, `create`.
 
 ### Query Command
 
@@ -116,6 +116,19 @@ Options:
   --set TEXT           Field value in field=value form. Repeat as needed.
   --fields-json TEXT   JSON object of fields to set, e.g. '{"name": "srv01"}'
   --help               Show this message and exit.
+```
+
+```console
+Usage: itopcli delete [OPTIONS]
+
+  Delete an iTOP object using core/delete.
+
+Options:
+  --config TEXT   [default: .itopcli]
+  --class TEXT    iTOP class  [required]
+  --key INTEGER   Object key to delete  [required]
+  --comment TEXT  Audit comment  [default: Deleted by itopcli]
+  --help          Show this message and exit.
 ```
 
 #### Get All Records
@@ -250,6 +263,14 @@ Options:
   --class Server \
   --fields-json '{"name":"test-server-02","cpu":8,"ram":32, "org_id": 1}' \
   --comment "Created from CLI"
+```
+
+#### Delete Records
+```console
+./itopcli delete \
+  --class Server \
+  --key 1 \
+  --comment "Deleted from CLI"
 ```
 
 ## How to Contribute

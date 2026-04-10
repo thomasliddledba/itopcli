@@ -356,6 +356,36 @@ def create(
 
     print_json(result)
 
+@cli.command()
+@click.option("--config", default=DEFAULT_CONFIG, show_default=True)
+@click.option("--class", "class_name", required=True, help="iTOP class")
+@click.option("--key", required=True, type=int, help="Object key to delete")
+@click.option(
+    "--comment", default="Deleted by itopcli", show_default=True, help="Audit comment"
+)
+def delete(
+    config: str,
+    class_name: str,
+    key: int,
+    comment: str,
+) -> None:
+    """Delete an iTOP object using core/delete."""
+    cfg = load_config(config)
+
+    payload = {
+        "operation": "core/delete",
+        "class": class_name,
+        "key": key,
+        "comment": comment,
+    }
+
+    try:
+        result = call_itop(cfg, payload)
+    except ClientError as exc:
+        fail("DeleteResults", str(exc))
+
+    print_json(result)
+
 
 @cli.command()
 @click.option(
