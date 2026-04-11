@@ -1,60 +1,76 @@
 # 🚀 itopcli — Python CLI for iTop ITSM / CMDB
 
-> A lightweight, powerful command-line interface for interacting with **Combodo iTop** via Web Services.
+<p align="left">
+  <a href="https://github.com/thomasliddledba/itopcli/blob/main/LICENSE">
+    <img src="https://img.shields.io/badge/License-MIT-yellow.svg" />
+  </a>
+  <img src="https://img.shields.io/github/v/release/thomasliddledba/itopcli" />
+  <img src="https://img.shields.io/badge/iTop-2.x%20%7C%203.x-orange.svg" />
+  <img src="https://img.shields.io/badge/Maintained-Yes-brightgreen.svg" />
+</p>
 
-itopcli is a powerful, lightweight Python command-line tool for interacting with the Combodo iTop ITSM platform via Web Services.
-Designed for DevOps engineers and IT administrators, it enables seamless CMDB automation—supporting query, create, update, and delete operations, along with safe dry-run previews.
-Perfect for scripting, integrations, and infrastructure management workflows.
+> A lightweight, powerful command-line interface for interacting with **Combodo iTop** via Web Services.
 
 ---
 
-## ⭐ Star this project on GitHub
+## ⭐ Star & Watch This Project
 
-If you find this useful, please ⭐ star the repository and share it!
+If you find this useful:
 
-👉 Watch the repo to stay updated with new features and improvements.
+* ⭐ **Star the repo** to support development
+* 👀 **Watch the repo** for updates and new features
 
 ---
 
 ## 📌 Overview
 
-**itopcli** is a Python-based CLI tool designed to interact with the iTop REST API.  
-It focuses primarily on **CMDB (Configuration Management Database)** operations, allowing you to:
+**itopcli** is a Python-based CLI tool for interacting with the iTop REST API, designed for:
 
-- 🔍 Query objects
-- ✏️ Update records
-- ➕ Create new objects
-- ❌ Delete objects
-- 🧪 Preview API payloads with `--dry-run`
+* DevOps engineers
+* IT administrators
+* CMDB automation workflows
+* Infrastructure management scripting
 
-Perfect for:
-- DevOps engineers
-- ITSM automation
-- CMDB management
-- Scripting and integrations
+It provides a simple way to perform **CRUD operations** on iTop objects directly from the command line.
+
+---
+
+## 🎯 Key Use Cases
+
+* Automating CMDB updates from scripts or pipelines
+* Bulk querying infrastructure data
+* Updating server attributes programmatically
+* Integrating iTop with external systems
+* Safe testing of API payloads with `--dry-run`
 
 ---
 
 ## ✅ Features
 
-- Simple CLI interface (built with `click`)
-- Full CRUD support (Create, Read, Update, Delete)
-- JSON output for automation (pipe to `jq`)
-- `--dry-run` mode for safe testing
-- Flexible input (`--set` or JSON)
-- Supports iTop 2.x and 3.x+
+* 🔍 Query iTop objects (`core/get`)
+* ✏️ Update objects (`core/update`)
+* ➕ Create objects (`core/create`)
+* ❌ Delete objects (`core/delete`)
+* 🧪 Dry-run mode (preview API payloads)
+* 📦 JSON output (perfect for `jq`, pipelines, automation)
+* ⚡ Lightweight and fast
 
 ---
 
 ## 🖥️ Supported Platforms
 
-| OS | Supported |
-|----|----------|
-| Ubuntu 16.04+ | ✅ |
-| Ubuntu 18.04+ | ✅ |
-| Ubuntu 20.04+ | ✅ |
-| Ubuntu 22.04+ | ✅ |
-| Windows | ✅ |
+| OS            | Supported |
+| ------------- | --------- |
+| Ubuntu 16.04+ | ✅         |
+| Ubuntu 18.04+ | ✅         |
+| Ubuntu 20.04+ | ✅         |
+| Ubuntu 22.04+ | ✅         |
+| Windows       | ✅         |
+
+Supports:
+
+* iTop 2.x
+* iTop 3.x+
 
 ---
 
@@ -73,55 +89,262 @@ chmod +x ./itopcli
 ## ⚙️ Configuration
 
 ```bash
-./itopcli configure   --location=".itopcli"   --url="http://localhost:8000"   --apisuffix="/webservices/rest.php"   --apiversion="1.3"   --organization="1"   --timeout=10   --username="admin"   --password="MyAdminPassword1!"
+./itopcli configure \
+  --location=".itopcli" \
+  --url="http://localhost:8000" \
+  --apisuffix="/webservices/rest.php" \
+  --apiversion="1.3" \
+  --organization="1" \
+  --timeout=10 \
+  --username="admin" \
+  --password="MyAdminPassword1!"
 ```
 
 ---
 
-## 🚀 Usage Guide
+# 🚀 Usage Guide
 
-### 🔍 Query
+---
 
-```bash
-./itopcli query --class Server --attribute name --criteria '*'
+## 🔍 Query Command (core/get)
+
+The query command is the **most powerful feature** of itopcli.
+
+It mirrors iTop’s internal query language:
+
 ```
-
-### ✏️ Update
-
-```bash
-./itopcli update --class Server --key 1 --set cpu=8
-```
-
-### ➕ Create
-
-```bash
-./itopcli create --class Server --set name=test --set org_id=1
-```
-
-### ❌ Delete
-
-```bash
-./itopcli delete --class Server --key 1
+SELECT Class WHERE attribute = value
 ```
 
 ---
 
-## 🧪 Dry Run
+### 🔹 Get All Records
 
 ```bash
-./itopcli create --class Server --set name=test --set org_id=1 --dry-run
+./itopcli query \
+  --class Server \
+  --attribute name \
+  --criteria '*'
 ```
+
+---
+
+### 🔹 Query Specific Object
+
+```bash
+./itopcli query \
+  --class Server \
+  --attribute name \
+  --criteria "Server01"
+```
+
+---
+
+### 🔹 Query by Key (Recommended for automation)
+
+```bash
+./itopcli query \
+  --class Server \
+  --key 1
+```
+
+---
+
+### 🔹 Limit Output Fields
+
+```bash
+./itopcli query \
+  --class Server \
+  --attribute name \
+  --criteria '*' \
+  --outputfields name,status,org_id
+```
+
+---
+
+### 🔹 Query + jq (DevOps workflow)
+
+```bash
+./itopcli query --class Server --attribute name --criteria '*' \
+  | jq '.objects[].fields.name'
+```
+
+---
+
+### 🔹 Example Output
+
+```json
+{
+  "objects": {
+    "Server::1": {
+      "fields": {
+        "name": "Server01",
+        "status": "production"
+      }
+    }
+  }
+}
+```
+
+---
+
+## ✏️ Update Command (core/update)
+
+Update specific fields on an object:
+
+```bash
+./itopcli update \
+  --class Server \
+  --key 1 \
+  --set cpu=8 \
+  --set ram=32 \
+  --comment "Updated via CLI"
+```
+
+---
+
+### 🔹 Update Using JSON
+
+```bash
+./itopcli update \
+  --class Server \
+  --key 1 \
+  --fields-json '{"cpu":8,"ram":32}'
+```
+
+---
+
+## ➕ Create Command (core/create)
+
+Create a new object in iTop:
+
+```bash
+./itopcli create \
+  --class Server \
+  --set name=test-server-01 \
+  --set cpu=8 \
+  --set ram=32 \
+  --set org_id=1
+```
+
+⚠️ **Important:**
+Many iTop classes require specific fields (e.g. `org_id`).
+Refer to your iTop data model for required attributes.
+
+---
+
+## ❌ Delete Command (core/delete)
+
+```bash
+./itopcli delete \
+  --class Server \
+  --key 1 \
+  --comment "Removed via CLI"
+```
+
+---
+
+## 🧪 Dry Run Mode
+
+Preview API payloads safely before execution:
+
+```bash
+./itopcli update \
+  --class Server \
+  --key 1 \
+  --set cpu=16 \
+  --dry-run
+```
+
+---
+
+## ⚙️ DevOps Tips & Best Practices
+
+### ✔ Always use dry-run first
+
+Prevent mistakes in production environments.
+
+---
+
+### ✔ Use jq for automation
+
+```bash
+./itopcli query ... | jq
+```
+
+---
+
+### ✔ Prefer key-based operations
+
+```bash
+--key 1
+```
+
+More reliable than attribute matching.
+
+---
+
+### ✔ Understand required fields
+
+Some classes require:
+
+* `org_id`
+* `location_id`
+* etc.
+
+---
+
+### ✔ Use JSON for complex updates
+
+```bash
+--fields-json '{"tags":["web","prod"]}'
+```
+
+---
+
+## 🔧 How Query Works (Important)
+
+itopcli builds queries like:
+
+```
+SELECT Server WHERE name = 'Server01'
+```
+
+Understanding this helps you:
+
+* debug queries
+* build automation
+* match iTop UI behavior
 
 ---
 
 ## 🔮 Roadmap
 
-- Lookup helpers
-- apply_stimulus support
-- Relationship management
+* 🔍 Lookup helpers (resolve names → IDs)
+* 🔄 Workflow support (`apply_stimulus`)
+* 🔗 Relationship management
+* 📦 pip install packaging
 
 ---
 
 ## 🤝 Contributing
 
-Pull requests welcome!
+Contributions are welcome!
+
+1. Fork the repo
+2. Create a feature branch
+3. Submit a PR
+
+---
+
+## 📄 License
+
+MIT License
+
+---
+
+## 🙌 Acknowledgements
+
+* Combodo iTop
+* Python Click
+* Open Source Community
