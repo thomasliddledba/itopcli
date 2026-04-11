@@ -1,282 +1,127 @@
-# itopcli
+# 🚀 itopcli — Python CLI for iTop ITSM / CMDB
 
-ITopcli is a python program to query and update the popular ITIL tool [Combodo iTop ITSM Software](https:/www.combodo.com/).
-Currently this focuses on the Configuration Management aspect of the software.  I'll continue to work on other areas.
+> A lightweight, powerful command-line interface for interacting with **Combodo iTop** via Web Services.
 
-```console
-    Usage: itopcli [OPTIONS] COMMAND [ARGS]...
+itopcli is a powerful, lightweight Python command-line tool for interacting with the Combodo iTop ITSM platform via Web Services.
+Designed for DevOps engineers and IT administrators, it enables seamless CMDB automation—supporting query, create, update, and delete operations, along with safe dry-run previews.
+Perfect for scripting, integrations, and infrastructure management workflows.
 
-    Options:
-    --help  Show this message and exit.
+---
 
-    Commands:
-    configure  Configure itopcli options.
-    query      Query classes (core/get) in iTop
-```
+## ⭐ Star this project on GitHub
 
-## Support
+If you find this useful, please ⭐ star the repository and share it!
 
-ITop Version 3.x +
+👉 Watch the repo to stay updated with new features and improvements.
 
->Note - I have tested this in ITop 2.x versions also with no issues.
+---
 
-| OS | Success |
-| --- | --- |
-| Ubuntu 22.04 + Python3.5+ | Yes |
-| Ubuntu 20.04 + Python3.5+ | Yes |
-| Ubuntu 18.04 + Python3.5+ | Yes |
-| Ubuntu 16.04 + Python3.5+ | Yes |
-| Windows + Python3.5+ | Yes |
+## 📌 Overview
 
-## Installation
+**itopcli** is a Python-based CLI tool designed to interact with the iTop REST API.  
+It focuses primarily on **CMDB (Configuration Management Database)** operations, allowing you to:
 
-```console
+- 🔍 Query objects
+- ✏️ Update records
+- ➕ Create new objects
+- ❌ Delete objects
+- 🧪 Preview API payloads with `--dry-run`
+
+Perfect for:
+- DevOps engineers
+- ITSM automation
+- CMDB management
+- Scripting and integrations
+
+---
+
+## ✅ Features
+
+- Simple CLI interface (built with `click`)
+- Full CRUD support (Create, Read, Update, Delete)
+- JSON output for automation (pipe to `jq`)
+- `--dry-run` mode for safe testing
+- Flexible input (`--set` or JSON)
+- Supports iTop 2.x and 3.x+
+
+---
+
+## 🖥️ Supported Platforms
+
+| OS | Supported |
+|----|----------|
+| Ubuntu 16.04+ | ✅ |
+| Ubuntu 18.04+ | ✅ |
+| Ubuntu 20.04+ | ✅ |
+| Ubuntu 22.04+ | ✅ |
+| Windows | ✅ |
+
+---
+
+## 📦 Installation
+
+```bash
 sudo apt install python3-pip -y
 git clone https://github.com/thomasliddledba/itopcli.git
-cd itopcli/
+cd itopcli
 pip3 install -r requirements.txt
 chmod +x ./itopcli
 ```
 
-## Configure
+---
 
-### Create config file
+## ⚙️ Configuration
 
-```console
-./itopcli configure \
---location=".itopcli" \
---url="http://localhost:8000" \
---apisuffix="/webservices/rest.php" \
---apiversion="1.3" \
---organization="Demo" \
---timeout=10 \
---username="admin" \
---password="MyAdminPassword1!"
+```bash
+./itopcli configure   --location=".itopcli"   --url="http://localhost:8000"   --apisuffix="/webservices/rest.php"   --apiversion="1.3"   --organization="1"   --timeout=10   --username="admin"   --password="MyAdminPassword1!"
 ```
 
-## Usage
-The itopcli has four commands `query`, `update`, `delete`, `create`.
+---
 
-### Query Command
+## 🚀 Usage Guide
 
-This client produces JSON for every query (even errors). You can format the JSON to your specs using the popular (jq) command. You can specify the `--outputfields` to list specific fields you would like to have displayed. The default is `*` or all fields.
+### 🔍 Query
 
-The class, attribute, and criteria are based on iTop's object schema. The object schema is found in the software under `Administration>Data Model`. I tried to mimic the [iTop Data Model](https://www.itophub.io/wiki/page?id=latest%3Adatamodel%3Astart) in this tool closely.
-
-If specified in the same command, the --key option precedes the --criteria option.
-
-```console
-Usage: itopcli query [OPTIONS]
-
-  Query classes (core/get) in iTop.
-
-  Notes:
-
-  The --key option takes precedence over --criteria option
-
-Options:
-  --class TEXT         iTop Server Class  [required]
-  --attribute TEXT     Attribute code for iTop Class  [required]
-  --criteria TEXT      Search criteria for iTop Class Attribute
-  --key INTEGER        Key number of Attribute (Must be integer)
-  --outputfields TEXT  Fields to be displayed in JSON (Comma-separated)
-  --dry-run            Print payload without sending request
-  --help               Show this message and exit.
+```bash
+./itopcli query --class Server --attribute name --criteria '*'
 ```
 
-### Update Command
+### ✏️ Update
 
-```console
-Usage: itopcli update [OPTIONS]
-
-  Update an iTOP object using core/update.
-
-Options:
-  --config TEXT        [default: .itopcli]
-  --class TEXT         iTOP class  [required]
-  --key INTEGER        Object key to update  [required]
-  --comment TEXT       Audit comment  [default: Updated by itopcli]
-  --outputfields TEXT  Fields to return after update  [default: *]
-  --set TEXT           Field update in field=value form. Repeat as needed.
-  --fields-json TEXT   JSON object of fields to update, e.g. '{"status":
-                       "production"}'
-  --dry-run            Print payload without sending request
-  --help               Show this message and exit.
+```bash
+./itopcli update --class Server --key 1 --set cpu=8
 ```
 
-### Create Command
-```
-Usage: itopcli create [OPTIONS]
+### ➕ Create
 
-  Create an iTOP object using core/create.
-
-Options:
-  --config TEXT        [default: .itopcli]
-  --class TEXT         iTOP class  [required]
-  --comment TEXT       Audit comment  [default: Created by itopcli]
-  --outputfields TEXT  Fields to return after create  [default: *]
-  --set TEXT           Field value in field=value form. Repeat as needed.
-  --fields-json TEXT   JSON object of fields to set, e.g. '{"name": "srv01"}'
-  --dry-run            Print payload without sending request
-  --help               Show this message and exit.
+```bash
+./itopcli create --class Server --set name=test --set org_id=1
 ```
 
-```console
-Usage: itopcli delete [OPTIONS]
+### ❌ Delete
 
-  Delete an iTOP object using core/delete.
-
-Options:
-  --config TEXT   [default: .itopcli]
-  --class TEXT    iTOP class  [required]
-  --key INTEGER   Object key to delete  [required]
-  --comment TEXT  Audit comment  [default: Deleted by itopcli]
-  --dry-run            Print payload without sending request
-  --help          Show this message and exit.
+```bash
+./itopcli delete --class Server --key 1
 ```
 
-#### Get All Records
+---
 
-```console
-./itopcli query --class='Server' --attribute='name' --criteria='*' --outputfields='*'
+## 🧪 Dry Run
+
+```bash
+./itopcli create --class Server --set name=test --set org_id=1 --dry-run
 ```
 
-```console
-{
-  "objects": {
-    "Server::1": {
-      "code": 0,
-      "message": "",
-      "class": "Server",
-      "key": "1",
-      "fields": {
-        "name": "Server1",
-        "description": "",
-...
-    },
-    "Server::2": {
-      "code": 0,
-      "message": "",
-      "class": "Server",
-      "key": "2",
-      "fields": {
-        "name": "Server2",
-        "description": ""
-        ...
-      },
-      ...
-  },
-{
-  "code": 0,
-  "message": "Found: 4"
-}
-```
+---
 
-#### Query Specific Records
+## 🔮 Roadmap
 
-```console
+- Lookup helpers
+- apply_stimulus support
+- Relationship management
 
-./itopcli query --class='Server' --attribute='name' --criteria='Server1' --outputfields='*'
-```
+---
 
-```console
-{
-  "objects": {
-    "Server::1": {
-      "code": 0,
-      "message": "",
-      "class": "Server",
-      "key": "1",
-      "fields": {
-        "name": "Server1",
-        ...
-      }
-  },
-{
-  "code": 0,
-  "message": "Found: 1"
-}
-```
+## 🤝 Contributing
 
-#### Query Specific Records with target data fields
-
-```console
-./itopcli query --class='Server' --attribute='name' --criteria='Server1' --outputfields='name, status'
- ```
-
- ```console
-{
-  "objects": {
-    "Server::1": {
-      "code": 0,
-      "message": "",
-      "class": "Server",
-      "key": "1",
-      "fields": {
-        "name": "Server1",
-        "status": "production"
-      }
-    }
-  },
-  "code": 0,
-  "message": "Found: 1"
-}
-```
-
-#### Update Specific Records with target data fields
-```console
-./itopcli update \
-  --class Server \
-  --key 1 \
-  --set description="Demo Server" \
-  --comment "Updated from CLI"
-```
-```console
-{
-  "code": 0,
-  "message": null,
-  "objects": {
-    "Server::1": {
-      "code": 0,
-      "message": "updated",
-      "class": "Server",
-      "key": "1",
-      "fields": {
-        "name": "Server1",
-        "description": "Demo Server",
-......
-}
-
-```
-
-#### Create Records (with `--set`)
-`org_id` is a required field.
-```console
-./itopcli create \
-  --class Server \
-  --set name=test-server-01 \
-  --set cpu=8 \
-  --set ram=32 \
-  --set org_id=1
-  --comment "Created from CLI"
-```
-
-#### Create Records (with json data)
-```console
-./itopcli create \
-  --class Server \
-  --fields-json '{"name":"test-server-02","cpu":8,"ram":32, "org_id": 1}' \
-  --comment "Created from CLI"
-```
-
-#### Delete Records
-```console
-./itopcli delete \
-  --class Server \
-  --key 1 \
-  --comment "Deleted from CLI"
-```
-
-## How to Contribute
-
-I'd love for anyone to contribute.  Please read the [CONTRIBUTING.md](CONTRIBUTING.md) document for more information.
+Pull requests welcome!
