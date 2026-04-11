@@ -80,6 +80,7 @@ Options:
   --criteria TEXT      Search criteria for iTop Class Attribute
   --key INTEGER        Key number of Attribute (Must be integer)
   --outputfields TEXT  Fields to be displayed in JSON (Comma-separated)
+  --dry-run            Print payload without sending request
   --help               Show this message and exit.
 ```
 
@@ -99,6 +100,7 @@ Options:
   --set TEXT           Field update in field=value form. Repeat as needed.
   --fields-json TEXT   JSON object of fields to update, e.g. '{"status":
                        "production"}'
+  --dry-run            Print payload without sending request
   --help               Show this message and exit.
 ```
 
@@ -115,6 +117,7 @@ Options:
   --outputfields TEXT  Fields to return after create  [default: *]
   --set TEXT           Field value in field=value form. Repeat as needed.
   --fields-json TEXT   JSON object of fields to set, e.g. '{"name": "srv01"}'
+  --dry-run            Print payload without sending request
   --help               Show this message and exit.
 ```
 
@@ -128,6 +131,7 @@ Options:
   --class TEXT    iTOP class  [required]
   --key INTEGER   Object key to delete  [required]
   --comment TEXT  Audit comment  [default: Deleted by itopcli]
+  --dry-run            Print payload without sending request
   --help          Show this message and exit.
 ```
 
