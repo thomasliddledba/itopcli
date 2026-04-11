@@ -197,17 +197,6 @@ def call_itop(cfg: ClientConfiguration, json_data: dict[str, Any]) -> dict[str, 
     return result
 
 
-def execute_or_preview(
-    cfg: ClientConfiguration,
-    payload: dict[str, Any],
-    dry_run: bool,
-) -> dict[str, Any] | None:
-    if dry_run:
-        print_json(payload)
-        return None
-    return call_itop(cfg, payload)
-
-
 @click.group()
 def cli() -> None:
     """iTOP command line client."""
@@ -218,11 +207,11 @@ def cli() -> None:
 @click.option(
     "--class", "class_name", default="Server", required=True, help="iTOP class"
 )
-@click.option("--attribute", required=True, help="Attribute code for iTOP class")
-@click.option("--criteria", default="*", show_default=True, help="Search criteria")
 @click.option(
     "--key", default=0, type=int, help="Object key (takes precedence over criteria)"
 )
+@click.option("--attribute", required=False, help="Attribute code for iTOP class")
+@click.option("--criteria", default="*", show_default=True, help="Search criteria")
 @click.option(
     "--outputfields",
     default="*",
@@ -240,20 +229,28 @@ def query(
     dry_run: bool,
 ) -> None:
     """Query iTOP objects using core/get."""
-    cfg = load_config(config)
+    if key <= 0 and criteria != "*" and not attribute:
+        fail("QueryArguments", "Use --attribute when querying by --criteria.")
+
     payload = {
         "operation": "core/get",
         "class": class_name,
         "key": build_query_key(class_name, attribute, criteria, key),
         "output_fields": outputfields,
     }
+
+    if dry_run:
+        print_json(payload)
+        return
+
+    cfg = load_config(config)
+
     try:
-        result = execute_or_preview(cfg, payload, dry_run)
+        result = call_itop(cfg, payload)
     except ClientError as exc:
         fail("QueryResults", str(exc))
 
-    if result is not None:
-        print_json(result)
+    print_json(result)
 
 
 @cli.command()
@@ -291,8 +288,6 @@ def update(
     dry_run: bool,
 ) -> None:
     """Update an iTOP object using core/update."""
-    cfg = load_config(config)
-
     try:
         fields = merge_update_fields(set_values, fields_json)
     except ClientError as exc:
@@ -310,13 +305,18 @@ def update(
         "output_fields": outputfields,
     }
 
+    if dry_run:
+        print_json(payload)
+        return
+
+    cfg = load_config(config)
+
     try:
-        result = execute_or_preview(cfg, payload, dry_run)
+        result = call_itop(cfg, payload)
     except ClientError as exc:
         fail("UpdateResults", str(exc))
 
-    if result is not None:
-        print_json(result)
+    print_json(result)
 
 
 @cli.command()
@@ -351,8 +351,6 @@ def create(
     dry_run: bool,
 ) -> None:
     """Create an iTOP object using core/create."""
-    cfg = load_config(config)
-
     try:
         fields = merge_update_fields(set_values, fields_json)
     except ClientError as exc:
@@ -369,13 +367,18 @@ def create(
         "output_fields": outputfields,
     }
 
+    if dry_run:
+        print_json(payload)
+        return
+
+    cfg = load_config(config)
+
     try:
-        result = execute_or_preview(cfg, payload, dry_run)
+        result = call_itop(cfg, payload)
     except ClientError as exc:
         fail("CreateResults", str(exc))
 
-    if result is not None:
-        print_json(result)
+    print_json(result)
 
 
 @cli.command()
@@ -394,8 +397,6 @@ def delete(
     dry_run: bool,
 ) -> None:
     """Delete an iTOP object using core/delete."""
-    cfg = load_config(config)
-
     payload = {
         "operation": "core/delete",
         "class": class_name,
@@ -403,13 +404,18 @@ def delete(
         "comment": comment,
     }
 
+    if dry_run:
+        print_json(payload)
+        return
+
+    cfg = load_config(config)
+
     try:
-        result = execute_or_preview(cfg, payload, dry_run)
+        result = call_itop(cfg, payload)
     except ClientError as exc:
         fail("DeleteResults", str(exc))
 
-    if result is not None:
-        print_json(result)
+    print_json(result)
 
 
 @cli.command()
