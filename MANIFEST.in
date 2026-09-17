@@ -1,0 +1,9 @@
+include Makefile LICENSE README.md CHANGELOG.md RELEASE.md requirements.txt itopcli .itopcli.example
+recursive-include tests *.py
+recursive-include scripts *.py
+exclude .itopcli .creds .pypirc
+global-exclude *.py[cod] __pycache__
+prune .git
+prune .venv
+prune venv
+prune itop

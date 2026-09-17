@@ -1,0 +1,473 @@
+#!/usr/bin/env python3
+"""iTOP CLI for querying and updating via Web Services."""
+
+from __future__ import annotations
+
+import configparser
+import json
+from pathlib import Path
+from typing import Any
+
+import click
+import requests
+from requests import Response
+
+DEFAULT_CONFIG = ".itopcli"
+SUPPORTED_API_VERSIONS = ["1.2", "1.3"]
+
+
+class ClientError(Exception):
+    """Raised for user-facing CLI errors."""
+
+
+class ClientConfiguration:
+    """Manage client configuration file."""
+
+    def __init__(self, location: str = DEFAULT_CONFIG):
+        self.location = Path(location)
+        self.url = ""
+        self.apisuffix = ""
+        self.apiversion = ""
+        self.organization = ""
+        self.username = ""
+        self.password = ""
+        self.timeout = 10
+        self.verify_ssl = True
+
+    def set(self, values: dict[str, Any]) -> None:
+        """Write connection settings without interpreting credential characters."""
+        parser = configparser.ConfigParser(interpolation=None)
+        parser["main"] = {}
+
+        for key, value in values.items():
+            if key == "location":
+                self.location = Path(str(value))
+            else:
+                parser["main"][key] = str(value)
+
+        try:
+            with self.location.open("w", encoding="utf-8") as configfile:
+                parser.write(configfile)
+        except OSError as exc:
+            raise ClientError(f"Could not write configuration: {exc}") from exc
+
+    def get(self) -> None:
+        """Load connection settings and validate configuration types."""
+        parser = configparser.ConfigParser(interpolation=None)
+        try:
+            with self.location.open("r", encoding="utf-8"):
+                parser.read(self.location)
+
+            self.url = parser.get("main", "url")
+            self.apisuffix = parser.get("main", "apisuffix")
+            self.apiversion = parser.get("main", "apiversion")
+            self.organization = parser.get("main", "organization", fallback="")
+            self.username = parser.get("main", "username")
+            self.password = parser.get("main", "password")
+            self.timeout = parser.getint("main", "timeout", fallback=10)
+            self.verify_ssl = parser.getboolean("main", "verify_ssl", fallback=True)
+        except configparser.MissingSectionHeaderError as exc:
+            raise ClientError("Section header [main] is missing") from exc
+        except (configparser.Error, ValueError) as exc:
+            raise ClientError(f"Invalid configuration: {exc}") from exc
+        except OSError as exc:
+            raise ClientError(
+                f"Could not read configuration: {exc}. Run 'itopcli configure --help'."
+            ) from exc
+
+    @property
+    def endpoint(self) -> str:
+        """Return the configured REST endpoint."""
+        return f"{self.url}{self.apisuffix}?version={self.apiversion}"
+
+
+def print_json(data: dict[str, Any]) -> None:
+    """Write formatted JSON to standard output."""
+    print(json.dumps(data, indent=2))
+
+
+def fail(source: str, message: str, exit_code: int = 1) -> None:
+    """Emit a structured error and terminate with a failure status."""
+    print_json({"source": source, "message": message})
+    raise SystemExit(exit_code)
+
+
+def load_config(config_path: str) -> ClientConfiguration:
+    """Load configuration or report a user-facing error."""
+    cfg = ClientConfiguration(location=config_path)
+    try:
+        cfg.get()
+    except ClientError as exc:
+        fail("ReadClientConfiguration", str(exc))
+    return cfg
+
+
+def coerce_value(value: str) -> Any:
+    """Convert command-line values to JSON-compatible types."""
+    raw = value.strip()
+    lowered = raw.lower()
+
+    if lowered == "true":
+        return True
+    if lowered == "false":
+        return False
+    if lowered in {"none", "null"}:
+        return None
+
+    if raw.startswith("{") or raw.startswith("["):
+        try:
+            return json.loads(raw)
+        except json.JSONDecodeError:
+            pass
+
+    try:
+        if raw.startswith("0") and raw not in {"0", "0.0"} and not raw.startswith("0."):
+            raise ValueError
+        return int(raw)
+    except ValueError:
+        pass
+
+    try:
+        return float(raw)
+    except ValueError:
+        pass
+
+    return raw
+
+
+def parse_set_values(pairs: tuple[str, ...]) -> dict[str, Any]:
+    """Parse repeated field=value arguments."""
+    values: dict[str, Any] = {}
+    for pair in pairs:
+        if "=" not in pair:
+            raise ClientError(f"Invalid --set value '{pair}'. Expected field=value.")
+        key, value = pair.split("=", 1)
+        key = key.strip()
+        value = value.strip()
+        if not key:
+            raise ClientError(f"Invalid --set value '{pair}'. Field name is empty.")
+        values[key] = coerce_value(value)
+    return values
+
+
+def parse_fields_json(raw_json: str | None) -> dict[str, Any]:
+    """Decode a JSON object of field values."""
+    if not raw_json:
+        return {}
+    try:
+        data = json.loads(raw_json)
+    except json.JSONDecodeError as exc:
+        raise ClientError(f"Invalid JSON in --fields-json: {exc}") from exc
+    if not isinstance(data, dict):
+        raise ClientError("--fields-json must decode to a JSON object")
+    return data
+
+
+def merge_update_fields(
+    set_pairs: tuple[str, ...], fields_json: str | None
+) -> dict[str, Any]:
+    """Merge JSON fields with explicit --set values taking precedence."""
+    fields = parse_fields_json(fields_json)
+    fields.update(parse_set_values(set_pairs))
+    return fields
+
+
+def build_query_key(class_name: str, attribute: str, criteria: str, key: int) -> Any:
+    """Build an object key or OQL query with an escaped string literal."""
+    if key > 0:
+        return key
+    if criteria == "*":
+        return f"SELECT {class_name}"
+    escaped = criteria.replace("\\", "\\\\").replace("'", "\\'")
+    return f"SELECT {class_name} WHERE {attribute} = '{escaped}'"
+
+
+def call_itop(cfg: ClientConfiguration, json_data: dict[str, Any]) -> dict[str, Any]:
+    """Send a REST request and validate the response."""
+    encoded_data = json.dumps(json_data)
+    try:
+        response: Response = requests.post(
+            cfg.endpoint,
+            timeout=cfg.timeout,
+            verify=cfg.verify_ssl,
+            data={
+                "auth_user": cfg.username,
+                "auth_pwd": cfg.password,
+                "json_data": encoded_data,
+            },
+        )
+        response.raise_for_status()
+    except requests.exceptions.RequestException as exc:
+        raise ClientError(f"HTTP error while calling iTOP: {exc}") from exc
+
+    try:
+        result = response.json()
+    except ValueError as exc:
+        raise ClientError(f"Invalid JSON response from server: {exc}") from exc
+
+    if not isinstance(result, dict):
+        raise ClientError("Invalid JSON response from server: expected an object")
+
+    if result.get("code") != 0:
+        raise ClientError(result.get("message", "Unknown iTOP error"))
+    return result
+
+
+@click.group()
+def cli() -> None:
+    """iTOP command line client."""
+
+
+@cli.command()
+@click.option("--config", default=DEFAULT_CONFIG, show_default=True)
+@click.option(
+    "--class", "class_name", default="Server", required=True, help="iTOP class"
+)
+@click.option(
+    "--key", default=0, type=int, help="Object key (takes precedence over criteria)"
+)
+@click.option("--attribute", required=False, help="Attribute code for iTOP class")
+@click.option("--criteria", default="*", show_default=True, help="Search criteria")
+@click.option(
+    "--outputfields",
+    default="*",
+    show_default=True,
+    help="Comma-separated output fields",
+)
+@click.option("--dry-run", is_flag=True, help="Print payload without sending request")
+def query(
+    config: str,
+    class_name: str,
+    attribute: str,
+    criteria: str,
+    key: int,
+    outputfields: str,
+    dry_run: bool,
+) -> None:
+    """Query iTOP objects using core/get."""
+    if key <= 0 and criteria != "*" and not attribute:
+        fail("QueryArguments", "Use --attribute when querying by --criteria.")
+
+    payload = {
+        "operation": "core/get",
+        "class": class_name,
+        "key": build_query_key(class_name, attribute, criteria, key),
+        "output_fields": outputfields,
+    }
+
+    if dry_run:
+        print_json(payload)
+        return
+
+    cfg = load_config(config)
+
+    try:
+        result = call_itop(cfg, payload)
+    except ClientError as exc:
+        fail("QueryResults", str(exc))
+
+    print_json(result)
+
+
+@cli.command()
+@click.option("--config", default=DEFAULT_CONFIG, show_default=True)
+@click.option("--class", "class_name", required=True, help="iTOP class")
+@click.option("--key", required=True, type=int, help="Object key to update")
+@click.option("--dry-run", is_flag=True, help="Print payload without sending request")
+@click.option(
+    "--comment", default="Updated by itopcli", show_default=True, help="Audit comment"
+)
+@click.option(
+    "--outputfields",
+    default="*",
+    show_default=True,
+    help="Fields to return after update",
+)
+@click.option(
+    "--set",
+    "set_values",
+    multiple=True,
+    help="Field update in field=value form. Repeat as needed.",
+)
+@click.option(
+    "--fields-json",
+    help='JSON object of fields to update, e.g. \'{"status": "production"}\'',
+)
+def update(
+    config: str,
+    class_name: str,
+    key: int,
+    comment: str,
+    outputfields: str,
+    set_values: tuple[str, ...],
+    fields_json: str | None,
+    dry_run: bool,
+) -> None:
+    """Update an iTOP object using core/update."""
+    try:
+        fields = merge_update_fields(set_values, fields_json)
+    except ClientError as exc:
+        fail("UpdateArguments", str(exc))
+
+    if not fields:
+        fail("UpdateArguments", "No fields supplied. Use --set or --fields-json.")
+
+    payload = {
+        "operation": "core/update",
+        "class": class_name,
+        "key": key,
+        "fields": fields,
+        "comment": comment,
+        "output_fields": outputfields,
+    }
+
+    if dry_run:
+        print_json(payload)
+        return
+
+    cfg = load_config(config)
+
+    try:
+        result = call_itop(cfg, payload)
+    except ClientError as exc:
+        fail("UpdateResults", str(exc))
+
+    print_json(result)
+
+
+@cli.command()
+@click.option("--config", default=DEFAULT_CONFIG, show_default=True)
+@click.option("--class", "class_name", required=True, help="iTOP class")
+@click.option("--dry-run", is_flag=True, help="Print payload without sending request")
+@click.option(
+    "--comment", default="Created by itopcli", show_default=True, help="Audit comment"
+)
+@click.option(
+    "--outputfields",
+    default="*",
+    show_default=True,
+    help="Fields to return after create",
+)
+@click.option(
+    "--set",
+    "set_values",
+    multiple=True,
+    help="Field value in field=value form. Repeat as needed.",
+)
+@click.option(
+    "--fields-json", help='JSON object of fields to set, e.g. \'{"name": "srv01"}\''
+)
+def create(
+    config: str,
+    class_name: str,
+    comment: str,
+    outputfields: str,
+    set_values: tuple[str, ...],
+    fields_json: str | None,
+    dry_run: bool,
+) -> None:
+    """Create an iTOP object using core/create."""
+    try:
+        fields = merge_update_fields(set_values, fields_json)
+    except ClientError as exc:
+        fail("CreateArguments", str(exc))
+
+    if not fields:
+        fail("CreateArguments", "No fields supplied. Use --set or --fields-json.")
+
+    # Read existing configuration for previews too, so defaults match real requests.
+    cfg = None
+    if not dry_run or Path(config).exists():
+        cfg = load_config(config)
+        if cfg.organization and "org_id" not in fields:
+            fields["org_id"] = cfg.organization
+
+    payload = {
+        "operation": "core/create",
+        "class": class_name,
+        "fields": fields,
+        "comment": comment,
+        "output_fields": outputfields,
+    }
+
+    if dry_run:
+        print_json(payload)
+        return
+
+    try:
+        result = call_itop(cfg, payload)
+    except ClientError as exc:
+        fail("CreateResults", str(exc))
+
+    print_json(result)
+
+
+@cli.command()
+@click.option("--config", default=DEFAULT_CONFIG, show_default=True)
+@click.option("--class", "class_name", required=True, help="iTOP class")
+@click.option("--key", required=True, type=int, help="Object key to delete")
+@click.option("--dry-run", is_flag=True, help="Print payload without sending request")
+@click.option(
+    "--comment", default="Deleted by itopcli", show_default=True, help="Audit comment"
+)
+def delete(
+    config: str,
+    class_name: str,
+    key: int,
+    comment: str,
+    dry_run: bool,
+) -> None:
+    """Delete an iTOP object using core/delete."""
+    payload = {
+        "operation": "core/delete",
+        "class": class_name,
+        "key": key,
+        "comment": comment,
+    }
+
+    if dry_run:
+        print_json(payload)
+        return
+
+    cfg = load_config(config)
+
+    try:
+        result = call_itop(cfg, payload)
+    except ClientError as exc:
+        fail("DeleteResults", str(exc))
+
+    print_json(result)
+
+
+@cli.command()
+@click.option(
+    "--location", default=DEFAULT_CONFIG, show_default=True, help="Config file location"
+)
+@click.option("--url", required=True, help="Root URL of iTOP server")
+@click.option("--apisuffix", required=True, help="Web context path to rest.php")
+@click.option("--apiversion", required=True, type=click.Choice(SUPPORTED_API_VERSIONS))
+@click.option(
+    "--organization", default="", show_default=True, help="Default organization"
+)
+@click.option("--timeout", default=10, type=int, show_default=True, help="HTTP timeout")
+@click.option("--username", required=True, help="REST username")
+@click.option("--password", required=True, help="REST password")
+@click.option(
+    "--verify-ssl/--no-verify-ssl",
+    default=True,
+    show_default=True,
+    help="Verify TLS certificates",
+)
+def configure(**kwargs: Any) -> None:
+    """Write CLI configuration."""
+    cfg = ClientConfiguration(location=kwargs["location"])
+    try:
+        cfg.set(kwargs)
+    except ClientError as exc:
+        fail("ConfigureException", str(exc))
+
+    print_json({"message": f"Configuration written to {kwargs['location']}"})
+
+
+if __name__ == "__main__":
+    cli()

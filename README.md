@@ -59,13 +59,7 @@ It provides a simple way to perform **CRUD operations** on iTop objects directly
 
 ## 🖥️ Supported Platforms
 
-| OS            | Supported |
-| ------------- | --------- |
-| Ubuntu 16.04+ | ✅         |
-| Ubuntu 18.04+ | ✅         |
-| Ubuntu 20.04+ | ✅         |
-| Ubuntu 22.04+ | ✅         |
-| Windows       | ✅         |
+Requires **Python 3.10 or newer**. CI covers Python 3.10–3.14 on Linux and Windows.
 
 Supports:
 
@@ -76,20 +70,31 @@ Supports:
 
 ## 📦 Installation
 
+The following command installs the 0.1.0 release once published on PyPI.
+For an unpublished checkout, use the development instructions below.
+
 ```bash
-sudo apt install python3-pip -y
-git clone https://github.com/thomasliddledba/itopcli.git
-cd itopcli
-pip3 install -r requirements.txt
-chmod +x ./itopcli
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install itopcli==0.1.0
 ```
 
 ---
 
+On Windows, activate with `.venv\Scripts\Activate.ps1` in PowerShell.
+After installation, use `itopcli` from any directory. The `./itopcli` launcher
+also works from this checkout with dependencies installed. Configuration paths
+are relative to your current directory; pass `--config /path/to/.itopcli` to
+object commands when needed.
+
 ## ⚙️ Configuration
 
+From a source checkout, copy `.itopcli.example` to `.itopcli` and fill in your connection settings,
+or use the command below. `.itopcli` contains plaintext credentials and is
+ignored by Git; keep your local copy private. The example contains placeholders.
+
 ```bash
-./itopcli configure \
+itopcli configure \
   --location=".itopcli" \
   --url="http://localhost:8000" \
   --apisuffix="/webservices/rest.php" \
@@ -121,7 +126,7 @@ SELECT Class WHERE attribute = value
 ### 🔹 Get All Records
 
 ```bash
-./itopcli query \
+itopcli query \
   --class Server \
   --attribute name \
   --criteria '*'
@@ -132,7 +137,7 @@ SELECT Class WHERE attribute = value
 ### 🔹 Query Specific Object
 
 ```bash
-./itopcli query \
+itopcli query \
   --class Server \
   --attribute name \
   --criteria "Server01"
@@ -143,7 +148,7 @@ SELECT Class WHERE attribute = value
 ### 🔹 Query by Key (Recommended for automation)
 
 ```bash
-./itopcli query \
+itopcli query \
   --class Server \
   --key 1
 ```
@@ -153,7 +158,7 @@ SELECT Class WHERE attribute = value
 ### 🔹 Limit Output Fields
 
 ```bash
-./itopcli query \
+itopcli query \
   --class Server \
   --attribute name \
   --criteria '*' \
@@ -165,7 +170,7 @@ SELECT Class WHERE attribute = value
 ### 🔹 Query + jq (DevOps workflow)
 
 ```bash
-./itopcli query --class Server --attribute name --criteria '*' \
+itopcli query --class Server --attribute name --criteria '*' \
   | jq '.objects[].fields.name'
 ```
 
@@ -193,7 +198,7 @@ SELECT Class WHERE attribute = value
 Update specific fields on an object:
 
 ```bash
-./itopcli update \
+itopcli update \
   --class Server \
   --key 1 \
   --set cpu=8 \
@@ -206,7 +211,7 @@ Update specific fields on an object:
 ### 🔹 Update Using JSON
 
 ```bash
-./itopcli update \
+itopcli update \
   --class Server \
   --key 1 \
   --fields-json '{"cpu":8,"ram":32}'
@@ -219,7 +224,7 @@ Update specific fields on an object:
 Create a new object in iTop:
 
 ```bash
-./itopcli create \
+itopcli create \
   --class Server \
   --set name=test-server-01 \
   --set cpu=8 \
@@ -229,6 +234,9 @@ Create a new object in iTop:
 
 ⚠️ **Important:**
 Many iTop classes require specific fields (e.g. `org_id`).
+When configured, `organization` supplies `org_id` for create requests that omit it.
+An explicit `org_id` in `--set` or `--fields-json` takes precedence, including null.
+Leave `organization` blank when creating classes that do not support `org_id`.
 Refer to your iTop data model for required attributes.
 
 ---
@@ -236,7 +244,7 @@ Refer to your iTop data model for required attributes.
 ## ❌ Delete Command (core/delete)
 
 ```bash
-./itopcli delete \
+itopcli delete \
   --class Server \
   --key 1 \
   --comment "Removed via CLI"
@@ -246,10 +254,15 @@ Refer to your iTop data model for required attributes.
 
 ## 🧪 Dry Run Mode
 
-Preview API payloads safely before execution:
+Preview API payloads safely before execution. Dry runs never send a request.
+Create previews load the selected configuration when it exists so organization
+defaults match real requests; without a configuration file they show only the
+supplied fields. An invalid existing configuration produces an error.
+
+Example:
 
 ```bash
-./itopcli update \
+itopcli update \
   --class Server \
   --key 1 \
   --set cpu=16 \
@@ -269,7 +282,7 @@ Prevent mistakes in production environments.
 ### ✔ Use jq for automation
 
 ```bash
-./itopcli query ... | jq
+itopcli query ... | jq
 ```
 
 ---
@@ -323,9 +336,32 @@ Understanding this helps you:
 * 🔍 Lookup helpers (resolve names → IDs)
 * 🔄 Workflow support (`apply_stimulus`)
 * 🔗 Relationship management
-* 📦 pip install packaging
 
 ---
+
+## Development
+
+GNU Make shortcuts (Python 3.10+): `make install-dev`,
+`make test`, `make lint`, `make build`, and `make help`. For token-based uploads
+with `make publish-testpypi` or `make publish-pypi`, see [RELEASE.md](RELEASE.md).
+
+```bash
+git clone https://github.com/thomasliddledba/itopcli.git
+cd itopcli
+python3 -m venv .venv
+source .venv/bin/activate
+python -m pip install -e .
+python -m unittest discover -s tests -v
+python -m pip install pylint
+python -m pylint itopcli_app/cli.py itopcli
+```
+
+Tests use temporary configuration files and mocked HTTP requests; they do not
+contact an iTop server. CI also checks installation and the installed command.
+Live compatibility with your iTop data model requires separate integration testing.
+
+Release maintainers: see [RELEASE.md](https://github.com/thomasliddledba/itopcli/blob/main/RELEASE.md)
+for building, TestPyPI testing, and publishing 0.1.0.
 
 ## 🤝 Contributing
 

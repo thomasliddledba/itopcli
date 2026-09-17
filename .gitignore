@@ -4,3 +4,7 @@ venv
 .creds
 itop/
 .itopcli
+.venv/
+build/
+dist/
+*.egg-info/
