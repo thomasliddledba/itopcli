@@ -129,13 +129,17 @@ Test the result in a fresh environment. Install runtime dependencies from PyPI,
 then fetch only itopcli from TestPyPI, so dependency resolution does not mix indexes:
 
 ```bash
-python -m pip install -r requirements.txt
+python -m pip install --index-url https://pypi.org/simple/ "click==8.3.2" "requests==2.33.1"
 python -m pip install --index-url https://test.pypi.org/simple/ --no-deps itopcli==0.1.0
 itopcli --help
 itopcli query --class Server --dry-run
 python -m pip check
 ```
 
+These commands work outside the source checkout; no `requirements.txt` is needed.
+Using only `--index-url https://test.pypi.org/simple/` for the entire installation
+also searches TestPyPI for dependencies, where the required versions may be absent.
+Install dependencies from PyPI first, then use `--no-deps` for the TestPyPI package.
 This tests CLI installation without contacting an iTop server.
 
 ## Publish on PyPI

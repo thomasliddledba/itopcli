@@ -87,6 +87,20 @@ also works from this checkout with dependencies installed. Configuration paths
 are relative to your current directory; pass `--config /path/to/.itopcli` to
 object commands when needed.
 
+### Install the TestPyPI release
+
+In your activated virtual environment, including outside this repository:
+
+```bash
+python -m pip install --index-url https://pypi.org/simple/ "click==8.3.2" "requests==2.33.1"
+python -m pip install --index-url https://test.pypi.org/simple/ --no-deps itopcli==0.1.0
+python -m pip check
+itopcli --help
+```
+
+TestPyPI does not contain all dependencies available on PyPI. These commands
+install dependencies from PyPI and only `itopcli` from TestPyPI.
+
 ## ⚙️ Configuration
 
 From a source checkout, copy `.itopcli.example` to `.itopcli` and fill in your connection settings,
