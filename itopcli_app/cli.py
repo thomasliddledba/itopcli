@@ -443,23 +443,50 @@ def delete(
 @click.option(
     "--location", default=DEFAULT_CONFIG, show_default=True, help="Config file location"
 )
-@click.option("--url", required=True, help="Root URL of iTOP server")
-@click.option("--apisuffix", required=True, help="Web context path to rest.php")
-@click.option("--apiversion", required=True, type=click.Choice(SUPPORTED_API_VERSIONS))
+@click.option("--url", help="Root URL of iTOP server")
+@click.option("--apisuffix", help="Web context path to rest.php")
+@click.option("--apiversion", type=click.Choice(SUPPORTED_API_VERSIONS))
 @click.option(
     "--organization", default="", show_default=True, help="Default organization"
 )
 @click.option("--timeout", default=10, type=int, show_default=True, help="HTTP timeout")
-@click.option("--username", required=True, help="REST username")
-@click.option("--password", required=True, help="REST password")
+@click.option("--username", help="REST username")
+@click.option("--password", help="REST password")
 @click.option(
     "--verify-ssl/--no-verify-ssl",
     default=True,
     show_default=True,
     help="Verify TLS certificates",
 )
-def configure(**kwargs: Any) -> None:
-    """Write CLI configuration."""
+@click.pass_context
+def configure(ctx: click.Context, **kwargs: Any) -> None:
+    """Write configuration using options or an interactive questionnaire."""
+    interactive = all(
+        ctx.get_parameter_source(key) == click.core.ParameterSource.DEFAULT
+        for key in kwargs
+    )
+    questions = [
+        ("url", "URL", None, str),
+        ("apisuffix", "API suffix", "/webservices/rest.php", str),
+        ("apiversion", "API version", "1.3", click.Choice(SUPPORTED_API_VERSIONS)),
+        ("organization", "Default organization (optional)", "", str),
+        ("timeout", "HTTP timeout (seconds)", 10, click.IntRange(min=1)),
+        ("username", "Username", None, str),
+        ("password", "Password", None, str),
+        ("verify_ssl", "Verify TLS certificates", True, bool),
+        ("location", "Configuration file", DEFAULT_CONFIG, str),
+    ]
+    for key, label, default, value_type in questions:
+        if interactive or kwargs[key] is None:
+            if key == "verify_ssl":
+                kwargs[key] = click.confirm(label, default=default)
+            else:
+                kwargs[key] = click.prompt(
+                    label,
+                    default=default,
+                    type=value_type,
+                    hide_input=key == "password",
+                )
     cfg = ClientConfiguration(location=kwargs["location"])
     try:
         cfg.set(kwargs)

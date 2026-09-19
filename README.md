@@ -71,7 +71,7 @@ Supports:
 ## 📦 Installation
 
 The following command installs the 0.1.0 release once published on PyPI.
-For an unpublished checkout, use the development instructions below.
+For an unpublished checkout, follow the [development setup guide](https://github.com/thomasliddledba/itopcli/blob/main/CONTRIBUTING.md#set-up-a-development-environment).
 
 ```bash
 python3 -m venv .venv
@@ -104,8 +104,21 @@ install dependencies from PyPI and only `itopcli` from TestPyPI.
 ## ⚙️ Configuration
 
 From a source checkout, copy `.itopcli.example` to `.itopcli` and fill in your connection settings,
-or use the command below. `.itopcli` contains plaintext credentials and is
+or use one of the commands below. `.itopcli` contains plaintext credentials and is
 ignored by Git; keep your local copy private. The example contains placeholders.
+
+Run `itopcli configure` without options to answer questions for each setting.
+The password is hidden while typing. Press Enter to accept displayed defaults;
+leave the organization blank if it is not needed. The file is written only after
+all questions are answered. Ctrl+C cancels without writing the configuration.
+
+```bash
+itopcli configure
+```
+
+Options remain supported for scripted setup. You can also supply some options
+and answer prompts for missing required settings; optional settings retain their
+defaults. For example, omit `--password` to enter it through a hidden prompt.
 
 ```bash
 itopcli configure \
@@ -345,45 +358,10 @@ Understanding this helps you:
 
 ---
 
-## 🔮 Roadmap
-
-* 🔍 Lookup helpers (resolve names → IDs)
-* 🔄 Workflow support (`apply_stimulus`)
-* 🔗 Relationship management
-
----
-
-## Development
-
-GNU Make shortcuts (Python 3.10+): `make install-dev`,
-`make test`, `make lint`, `make build`, and `make help`. For token-based uploads
-with `make publish-testpypi` or `make publish-pypi`, see [RELEASE.md](RELEASE.md).
-
-```bash
-git clone https://github.com/thomasliddledba/itopcli.git
-cd itopcli
-python3 -m venv .venv
-source .venv/bin/activate
-python -m pip install -e .
-python -m unittest discover -s tests -v
-python -m pip install pylint
-python -m pylint itopcli_app/cli.py itopcli
-```
-
-Tests use temporary configuration files and mocked HTTP requests; they do not
-contact an iTop server. CI also checks installation and the installed command.
-Live compatibility with your iTop data model requires separate integration testing.
-
-Release maintainers: see [RELEASE.md](https://github.com/thomasliddledba/itopcli/blob/main/RELEASE.md)
-for building, TestPyPI testing, and publishing 0.1.0.
-
 ## 🤝 Contributing
 
-Contributions are welcome!
-
-1. Fork the repo
-2. Create a feature branch
-3. Submit a PR
+See [CONTRIBUTING.md](https://github.com/thomasliddledba/itopcli/blob/main/CONTRIBUTING.md)
+for bug reports, feature proposals, development setup, tests, and pull request guidelines.
 
 ---
 
