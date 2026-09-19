@@ -118,9 +118,20 @@ def main():
         f"{project['name']}-{project['version']}-py3-none-any.whl",
         f"{project['name']}-{project['version']}.tar.gz",
     }
-    assert {
-        path.name for path in args.dist.iterdir()
-    } == expected, "Unexpected or missing artifacts"
+    if not args.dist.is_dir():
+        parser.error(f"Distribution directory {args.dist} is missing. Run 'make build'.")
+    actual = {path.name for path in args.dist.iterdir()}
+    if actual != expected:
+        details = []
+        if expected - actual:
+            details.append("Missing: " + ", ".join(sorted(expected - actual)))
+        if actual - expected:
+            details.append("Unexpected: " + ", ".join(sorted(actual - expected)))
+        parser.error(
+            "; ".join(details)
+            + ". Move older artifacts out of the distribution directory, or run "
+            "'make clean' followed by 'make build' to rebuild only the current version."
+        )
     for name in sorted(expected):
         check_archive(args.dist / name, project)
 
