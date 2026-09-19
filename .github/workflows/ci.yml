@@ -1,5 +1,31 @@
 name: CI
-on: [push, pull_request, workflow_call]
+on:
+  push:
+    branches: ["**"]
+    paths:
+      - 'itopcli'
+      - 'itopcli_app/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'pyproject.toml'
+      - 'requirements*.txt'
+      - 'MANIFEST.in'
+      - 'Makefile'
+      - '.itopcli.example'
+      - '.github/workflows/**'
+  pull_request:
+    paths:
+      - 'itopcli'
+      - 'itopcli_app/**'
+      - 'tests/**'
+      - 'scripts/**'
+      - 'pyproject.toml'
+      - 'requirements*.txt'
+      - 'MANIFEST.in'
+      - 'Makefile'
+      - '.itopcli.example'
+      - '.github/workflows/**'
+  workflow_call:
 permissions:
   contents: read
 jobs:

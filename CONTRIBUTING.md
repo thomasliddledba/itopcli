@@ -67,7 +67,11 @@ python -m twine check --strict dist/*
 
 Tests use temporary configuration files and mocked HTTP requests; they do not
 contact an iTop server. CI covers Python 3.10–3.14 on Linux and Windows and checks
-installation and the installed command. Live compatibility with an iTop data
+installation and the installed command. Push and pull request CI runs only when
+application code, tests, scripts, packaging files, the Makefile, the example
+configuration, or workflow definitions change. Documentation-only changes skip
+these runs. Release publishing still invokes the full CI checks explicitly.
+Live compatibility with an iTop data
 model requires separate integration testing. Describe any integration testing
 in your pull request, including the iTop version tested.
 
